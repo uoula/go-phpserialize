@@ -61,8 +61,12 @@ func encodeValue(buf *bytes.Buffer, value interface{}) (err error) {
 		buf.WriteString("a")
 		buf.WriteRune(TYPE_VALUE_SEPARATOR)
 		var int64Key bool
+		var maxNumber int64 = math.MinInt64
 		for k, _ := range t {
 			if reflect.TypeOf(k).String() == "int64" {
+				if k.(int64) > maxNumber {
+					maxNumber = k.(int64)
+				}
 				int64Key = true
 			} else {
 				int64Key = false
@@ -70,7 +74,7 @@ func encodeValue(buf *bytes.Buffer, value interface{}) (err error) {
 			}
 		}
 		if int64Key {
-			err = encodeArrayIntKey(buf, t)
+			err = encodeArrayIntKey(buf, t, maxNumber)
 		} else {
 			err = encodeArrayCore(buf, t)
 		}
@@ -118,7 +122,7 @@ func encodeArrayCore(buf *bytes.Buffer, arrValue map[interface{}]interface{}) (e
 	return err
 }
 
-func encodeArrayIntKey(buf *bytes.Buffer, arrValue map[interface{}]interface{}) (err error) {
+func encodeArrayIntKey(buf *bytes.Buffer, arrValue map[interface{}]interface{}, maxKey int64) (err error) {
 	valLen := strconv.Itoa(len(arrValue))
 	buf.WriteString(valLen)
 	buf.WriteRune(TYPE_VALUE_SEPARATOR)
@@ -129,7 +133,7 @@ func encodeArrayIntKey(buf *bytes.Buffer, arrValue map[interface{}]interface{}) 
 		mapInt64[k.(int64)] = v
 	}
 
-	for k := int64(0); k <= maxInt64Key(mapInt64); k++ {
+	for k := int64(0); k <= maxKey; k++ {
 		if v, ok := mapInt64[k]; ok {
 			if intKey, _err := strconv.Atoi(fmt.Sprintf("%v", k)); _err == nil {
 				if err = encodeValue(buf, intKey); err != nil {
@@ -148,14 +152,4 @@ func encodeArrayIntKey(buf *bytes.Buffer, arrValue map[interface{}]interface{}) 
 
 	buf.WriteRune('}')
 	return err
-}
-
-func maxInt64Key(mapInt64 map[int64]interface{}) (maxNumber int64) {
-	maxNumber = math.MinInt64
-	for n := range mapInt64 {
-		if n > maxNumber {
-			maxNumber = n
-		}
-	}
-	return maxNumber
 }
